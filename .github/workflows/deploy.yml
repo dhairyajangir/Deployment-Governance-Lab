@@ -1,43 +1,32 @@
 name: Deploy Checkout Service
-
-on:
+'on':
   push:
-    branches:
-      - '*'
+    branches: [main]
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
+    timeout-minutes: 10
+    environment: production
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build application
-        run: |
-          echo "Building Checkout Service..."
-          npm install
-          npm run build
-
-      - name: Deploy to production
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and test
+        run: npm install && npm test && npm run build
+      - name: Validate environment-scoped lab credentials
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           API_TOKEN: ${{ secrets.API_TOKEN }}
-          ENVIRONMENT: production
         run: |
-          echo "Deploying to production..."
-          echo "Deploy key: ${DEPLOY_KEY:0:10}..."
-          echo "Database URL: $DATABASE_URL"
-          echo "API Token: ${API_TOKEN:0:10}..."
-          echo "Application deployed successfully"
-          echo "Deployment timestamp: $(date)"
-
-      - name: Notify deployment
-        if: success()
-        run: |
-          echo "Production deployment completed"
-          echo "All systems nominal"
+          test -n "$DEPLOY_KEY"
+          test -n "$DATABASE_URL"
+          test -n "$API_TOKEN"
+          echo "Environment-scoped lab values available after approval (values not logged)"
+      - name: Simulate production release
+        run: echo "Training deployment approved; no external infrastructure changed"
